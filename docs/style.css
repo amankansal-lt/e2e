@@ -378,7 +378,7 @@ html.dark body .code-block-fade-overlay {
   /* 16:9 at least, taller when the text wraps, so the image always meets the border. */
   min-height: 112.5px;
   overflow: hidden;
-  background: var(--e2e-surface, var(--e2e-hairline));
+  background: var(--e2e-surface);
 }
 
 /* hqdefault.jpg is 4:3 with letterbox bars; cover crops them away. */
