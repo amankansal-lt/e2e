@@ -1,13 +1,15 @@
 ---
 title: Integrations
 sidebarTitle: Overview
-description: Official integrations with hosted services, one package per service.
+description: Integrations with hosted services, one package per service, and device clouds agent-device reaches itself.
 ---
 
 Official integrations connect e2e to hosted services through the engines'
 provider seams, one package per service. Tests and CI stay the same, and the
 config changes only where a target names its `browser` or `device`: the
-integration decides where it comes from.
+integration decides where it comes from. A device cloud agent-device
+reaches through its own cloud providers needs no package: the integration is
+a small provider in your project.
 
 <CardGroup cols={2}>
   <Card title="Kernel" icon="/images/integrations/kernel.svg" href="/integrations/kernel">
@@ -15,6 +17,9 @@ integration decides where it comes from.
   </Card>
   <Card title="EAS Simulators" icon="/images/integrations/expo.svg" href="/integrations/eas">
     `@e2e-dev/eas`: hosted iOS simulators and Android emulators for mobile targets.
+  </Card>
+  <Card title="TestMu AI" icon="mobile-screen" href="/integrations/testmu">
+    A provider in your project, no package: emulators, simulators, and real devices for mobile targets through agent-device's `testmu` provider.
   </Card>
 </CardGroup>
 

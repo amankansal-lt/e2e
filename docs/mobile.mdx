@@ -302,7 +302,8 @@ on `app.bundleId`, so traces recorded locally replay on hosted devices.
 
 A device cloud agent-device speaks to itself needs no session API of your
 own: the provider allocates a lease through a daemon it starts for the run and
-hands the worker the lease scope as `client`.
+hands the worker the lease scope as `client`. [TestMu AI](/integrations/testmu)
+is one such cloud.
 
 ```ts title="device-cloud-provider.ts"
 import { createAgentDeviceClient } from 'agent-device';

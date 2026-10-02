@@ -1,0 +1,247 @@
+---
+title: TestMu AI
+sidebarTitle: TestMu AI
+description: Run mobile targets on TestMu AI (formerly LambdaTest) Android emulators, iOS simulators, and real devices through agent-device's testmu provider.
+---
+
+[TestMu AI](https://www.lambdatest.com) (formerly LambdaTest) hosts Android
+emulators, iOS simulators, and real devices. agent-device reaches them
+through its `testmu` cloud provider, which drives each session over TestMu
+AI's Appium hub, so the mobile engine runs on them with a
+[device provider](/mobile#hosted-devices) of a few dozen lines in your
+project. There is no `@e2e-dev/*` package for TestMu AI: the provider below
+is the whole integration. Tests and CI stay the same.
+
+<Tip>
+No Mac, Xcode, or Android SDK on the machine that runs e2e.
+</Tip>
+
+## Requirements
+
+The provider imports `agent-device`, so install it in your project, at a
+version that includes the `testmu` provider. `@e2e-dev/mobile` pins its own
+agent-device; until e2e picks up such a release, override that pin too. The
+provider starts the daemon from your copy and the engine's workers send
+commands through theirs, so both must be the same agent-device:
+
+<CodeGroup>
+```bash npm
+npm install --save-dev agent-device@<version>
+```
+
+```bash pnpm
+pnpm add -D agent-device@<version>
+```
+
+```bash bun
+bun add -d agent-device@<version>
+```
+</CodeGroup>
+
+<CodeGroup>
+```json npm
+{
+  "overrides": {
+    "agent-device": "$agent-device"
+  }
+}
+```
+
+```yaml pnpm
+# pnpm-workspace.yaml
+overrides:
+  agent-device: $agent-device
+```
+
+```json bun
+{
+  "overrides": {
+    "agent-device": "<version>"
+  }
+}
+```
+</CodeGroup>
+
+`<version>` is an agent-device release that includes the `testmu` provider.
+For npm and bun the `overrides` field goes in `package.json`.
+
+## Authenticate
+
+Set `LT_USERNAME` and `LT_ACCESS_KEY` to your TestMu AI username and access
+key in the environment `e2e run` starts in, such as CI secrets. The
+provider starts the agent-device daemon from the run, and the daemon reads
+both from its environment.
+
+## The provider
+
+Save it in your project, next to `e2e.config.ts`:
+
+```ts title="testmu-device-provider.ts"
+import { createAgentDeviceClient } from 'agent-device';
+import type { DeviceProvider } from '@e2e-dev/mobile';
+
+type Scope = { tenant: string; runId: string; leaseId: string; leaseBackend: 'ios-instance' | 'android-instance'; leaseProvider: 'testmu' };
+
+/**
+ * Leases TestMu AI virtual or real devices through agent-device's `testmu`
+ * provider, from a daemon started for the run. The daemon reads
+ * `LT_USERNAME` and `LT_ACCESS_KEY` from its environment.
+ */
+export function testmuDevices(options: {
+  device: string;
+  osVersion: string;
+  app: string;
+  stateDir: string;
+  deviceType?: 'virtual' | 'real';
+  build?: string;
+}): DeviceProvider {
+  const scopes = new Map<string, Scope>();
+  return {
+    name: 'testmu',
+    async acquire(request) {
+      const stateDir = `${options.stateDir}/${request.runId}`;
+      const client = createAgentDeviceClient({ stateDir, session: `lease-${request.slot}` });
+      const leaseBackend = request.platform === 'ios' ? ('ios-instance' as const) : ('android-instance' as const);
+      const selectors = {
+        platform: request.platform,
+        target: 'mobile' as const,
+        device: options.device,
+        providerOsVersion: options.osVersion,
+        providerApp: options.app,
+        providerDeviceType: options.deviceType ?? 'virtual',
+        providerProject: 'e2e',
+        providerBuild: options.build ?? request.runId,
+      };
+      const lease = await client.leases.allocate({ tenant: 'testmu', runId: request.runId, leaseBackend, leaseProvider: 'testmu', ...selectors });
+      request.log(`leased ${lease.leaseId}`);
+      const scope: Scope = { tenant: lease.tenantId, runId: lease.runId, leaseId: lease.leaseId, leaseBackend, leaseProvider: 'testmu' };
+      scopes.set(lease.leaseId, scope);
+      // The hosted session starts on the worker's first command, which reads the selectors from its client config.
+      return { id: lease.leaseId, client: { stateDir, ...scope, ...selectors } };
+    },
+    async release(lease) {
+      const scope = scopes.get(lease.id);
+      if (scope === undefined) return;
+      const client = createAgentDeviceClient({ stateDir: `${options.stateDir}/${scope.runId}`, session: 'release' });
+      await client.leases.release(scope);
+    },
+  };
+}
+```
+
+Each worker slot allocates a lease through a daemon the provider starts
+under `stateDir`, one per run. The lease carries the device selectors, and
+the worker's first command creates the TestMu AI session from them; releasing
+the lease ends it. Sessions are grouped on the TestMu AI dashboard under the
+project `e2e` and a build named after the run id, or `build`.
+
+## Configure targets
+
+```ts title="e2e.config.ts"
+import type { E2EConfig } from 'e2e';
+import { mobile } from '@e2e-dev/mobile';
+import { testmuDevices } from './testmu-device-provider.ts';
+
+const stateDir = '.e2e/testmu';
+const apk = 'https://prod-mobile-artefacts.lambdatest.com/assets/docs/proverbial_android.apk';
+
+export default {
+  targets: [
+    {
+      name: 'android-emulator',
+      engine: mobile({
+        platform: 'android',
+        device: testmuDevices({ device: 'Galaxy S22 Ultra 5G', osVersion: '14', app: apk, stateDir }),
+      }),
+      app: { bundleId: 'com.lambdatest.proverbial' },
+    },
+    {
+      name: 'ios-simulator',
+      engine: mobile({
+        platform: 'ios',
+        device: testmuDevices({ device: 'iPhone 16', osVersion: '18.0', app: './build/MyApp.zip', stateDir }),
+      }),
+      app: { bundleId: 'com.example.app' },
+    },
+    {
+      name: 'android-real',
+      engine: mobile({
+        platform: 'android',
+        device: testmuDevices({ device: 'Pixel 6', osVersion: '14', app: apk, deviceType: 'real', stateDir }),
+      }),
+      app: { bundleId: 'com.lambdatest.proverbial' },
+    },
+  ],
+  workers: 1,
+} satisfies E2EConfig;
+```
+
+`device` and `osVersion` must match TestMu AI's catalog exactly, as the
+[capabilities generator](https://www.lambdatest.com/capabilities-generator)
+lists them: a virtual iOS device takes a version like `18.0`, a real iOS
+device one like `18`, and Android one like `14`. TestMu AI checks them when
+the session starts and refuses a name or version it does not list.
+`deviceType: 'real'` picks a real device instead of an emulator or
+simulator; it needs an agent-device release whose `testmu` provider supports
+real devices.
+
+Keep `app.bundleId`: TestMu AI installs the app when the session starts,
+and `app.open()` launches the installed bundle id or package, not the upload
+name. Leave `app.appPath` out.
+
+## Install the app
+
+`app` in the provider's options names the build TestMu AI installs on every
+session:
+
+- **An app id**: an `lt://` reference to a build already in TestMu AI's app
+  storage.
+- **A URL**: an `https` link to the build.
+- **A local path**: a build on the machine that runs e2e, uploaded when the
+  session starts.
+
+The build must suit the device:
+
+| Device | Build |
+| --- | --- |
+| Android emulator or real device | `.apk` or `.aab` |
+| iOS simulator | a zipped `.app` bundle, not an `.ipa` |
+| Real iOS device | a signed `.ipa` |
+
+## Write a test
+
+Tests are the same as on a local device:
+
+```ts title="tests/home.e2e.ts"
+import { test } from '@e2e-dev/mobile';
+import { expect } from 'e2e';
+
+test('Proverbial home screen', async ({ app, screen }) => {
+  await app.open();
+  await expect(screen.getByText('Proverbial')).toBeVisible();
+  await expect(screen.getByRole('button', 'GEOLOCATION')).toBeVisible();
+});
+```
+
+## Sessions
+
+Each target leases up to `workers` devices (`--workers` overrides it), one
+per worker slot, before the run's clock starts. A session takes about 30 to
+75 seconds to start, allocation and app upload included. TestMu AI
+runs as many sessions at once as the plan allows, so keep `workers` times
+the number of TestMu AI targets within it.
+
+## Limits
+
+Sessions run over TestMu AI's Appium hub through agent-device's WebDriver
+runtime, so what agent-device does not support there is not available to
+tests:
+
+- `device` settings: permissions, location, network, and appearance.
+- System alerts.
+- Recording through agent-device. Leave [`video`](/reference/config#video)
+  off for these targets. TestMu AI records every session itself, and the
+  video and device logs are on its dashboard.
+- Device logs through agent-device; read them on the dashboard.
+- Port reverse. To reach a server on your machine or network, use TestMu
+  AI Tunnel.
