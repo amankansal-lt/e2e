@@ -89,6 +89,10 @@ suites that consume the built packages the way a user would.
   engine's provider seam (`BrowserProvider` for web, `DeviceProvider` for
   mobile) and imports the engine's types only; the engines never know it
   exists.
+  Its docs page under `docs/integrations/` ships with the vendor's logo as
+  the sidebar icon and on its overview card (`authoring-docs`, "Page
+  icons"); `scripts/check-docs-logos.ts` fails `pnpm docs:check` without
+  them.
 - `packages/lightpanda` - the published `@e2e-dev/lightpanda` package: a
   `BrowserProvider` that starts a local `lightpanda serve` per worker slot
   and stops it with the run; no vendor SDK, the binary is the dependency.
@@ -173,9 +177,10 @@ suites that consume the built packages the way a user would.
   native project, as a user would.
 - `docs/` (the Mintlify docs site; pages are the `.mdx` files under `docs/`,
   navigation, theme, and redirects in `docs/docs.json`, extra CSS in
-  `docs/style.css`; `docs/examples/` is typechecked and shown verbatim on
-  docs pages and in `skills/e2e/` (`docs/examples/skill/`), kept in sync by
-  `scripts/check-docs-examples.ts`; a shell
+  `docs/style.css`, the table of contents scroll in
+  `docs/table-of-contents.js`; `docs/examples/` is typechecked and shown
+  verbatim on docs pages and in `skills/e2e/` (`docs/examples/skill/`), kept
+  in sync by `scripts/check-docs-examples.ts`; a shell
   block that runs `npx` or `npm install`/`ci` sits in a `<CodeGroup>` of
   `npm`, `pnpm`, and `bun` blocks, which Mintlify syncs site-wide, enforced
   by `scripts/check-docs-package-managers.ts`; every navigation page but the
@@ -230,7 +235,8 @@ suites that consume the built packages the way a user would.
   `pnpm plugins:sync`; `pnpm plugins:check` checks the generated copies,
   license, Claude manifest, and both manifests' `version`, which is the
   runner's (`version-packages` syncs it, so plugin
-  installs update once per release). The Codex manifest's other fields,
+  installs update once per release; it does the same for
+  `packages/e2e/server.json`, the MCP Registry entry). The Codex manifest's other fields,
   assets, README, and per-skill `agents/openai.yaml` are maintained in the
   plugin. Keep the
   package self-contained and leave the repository's development MCP
@@ -242,7 +248,7 @@ suites that consume the built packages the way a user would.
 Build first — nearly everything downstream consumes `dist`.
 
 ```bash
-pnpm check          # lint -> check:dead-code -> typecheck -> docs:check-errors -> check:peer-ranges -> check:install-scripts -> plugins:check -> docs:check (full gate)
+pnpm check          # lint -> check:dead-code -> typecheck -> docs:check-errors -> check:peer-ranges -> check:install-scripts -> plugins:check -> mcp-server:check -> docs:check (full gate)
 pnpm test           # builds, then vitest unit + integration
 pnpm test:testbed   # builds, then runs the real CLI against the playground app
 pnpm test:web-benchmark   # builds, then runs the real CLI against the benchmark scenarios
@@ -434,8 +440,8 @@ Arguments after `--` go to `e2e run`; the options are in the header of
   interval, `faster`, `slower`, or `same` against `±--threshold`, else
   `unresolved`. Sampling stops once the suite's interval resolves.
 - Counters that should not move within one build: steps, events by kind,
-  observed nodes and bytes, cache modes, model calls and tokens. A change
-  here is exact and needs no statistics.
+  observed nodes and bytes, cache modes, model calls and tokens, run exit
+  code. A change here is exact and needs no statistics.
 
 Runs go with `CI=1`: committed recordings replay read-only, a step with none
 calls the model. A load average above half the cores is warned about; shared

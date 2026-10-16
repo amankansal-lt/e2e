@@ -5,7 +5,7 @@ import { isAgentError } from '../agent/error.ts';
 import type { ReplayHandOffReason } from '../agent/executor.ts';
 import type { CacheWrite } from '../cache/context.ts';
 import type { TraceReplayMissReason } from '../cache/decide.ts';
-import type { DerivedReason } from '../cache/trace.ts';
+import type { RecordedModel, DerivedReason } from '../cache/trace.ts';
 import { bound } from '../internal/text.ts';
 import { markAbandonedRejection, relocateStack } from '../internal/abandoned.ts';
 import { withAiTraceStep } from '../internal/ai-trace.ts';
@@ -139,6 +139,8 @@ export interface StepCacheInfo {
    * screen the recording started on against the one the step did.
    */
   detail?: string;
+  /** Configured model when the consulted entry was recorded; absent on older entries. */
+  recordedBy?: RecordedModel;
 }
 
 /** The cache detail as the report keeps it: what `agent.act()` returns, and what became of the recording once the attempt settled. */

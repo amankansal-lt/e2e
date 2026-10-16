@@ -128,7 +128,7 @@ async function holdsSameFlow(store: CacheStore, keyHash: string, trace: ActionTr
 
 /** The part of a trace that decides what a replay does, as canonical JSON. */
 function flowOf(trace: ActionTrace): string {
-  const { summary: _summary, endWaitMs: _endWaitMs, keyedBy: _keyedBy, actions, ...flow } = trace;
+  const { summary: _summary, endWaitMs: _endWaitMs, keyedBy: _keyedBy, recordedBy: _recordedBy, actions, ...flow } = trace;
   return canonicalJson({
     ...flow,
     actions: actions.map((action) => {

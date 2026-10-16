@@ -233,6 +233,12 @@
       "required": ["mode", "replayedActions", "totalActions"],
       "properties": {
         "mode": { "enum": ["self-finalized", "agent-concluded", "missed"] },
+        "recordedBy": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["provider", "model"],
+          "properties": { "provider": { "type": "string", "maxLength": 300, "pattern": "\\S" }, "model": { "type": "string", "maxLength": 300, "pattern": "\\S" } }
+        },
         "reason": {
           "enum": [
             "retry",

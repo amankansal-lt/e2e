@@ -32,7 +32,7 @@ import { RUNTIME_CODES, type ExecutorPixels, type StepExecutorContext, type Step
 import type { AgentContext, AgentSelection } from './invocation.ts';
 import { projectPriorSteps, serializeLedger } from './ledger.ts';
 import { tokenUpperBound } from './model/adapter.ts';
-import { instantiateLanguageModel } from './model/sdk.ts';
+import { instantiateLanguageModel, isUnservedModelError, unservedModelError } from './model/sdk.ts';
 import type { AgentObservation } from './observation.ts';
 import { ObservationFeed } from './observation-feed.ts';
 import { recordPolicyEvent } from './phases.ts';
@@ -162,7 +162,9 @@ export async function dispatchAgentStep(
       try {
         verdict = await dispatch.run();
       } catch (cause) {
-        throw dispatch.settleThrown(toAgentError(cause));
+        const error = unservedModelError(cause) ?? toAgentError(cause);
+        if (isUnservedModelError(error)) runtime.reportUnservedModel(error);
+        throw dispatch.settleThrown(error);
       }
       const evidence = await dispatch.captureEvidence();
       dispatch.settle(validateVerdict(verdict, agent.executor.name), evidence);
@@ -363,7 +365,8 @@ class ActDispatch {
 
   /** Hands the settled outcome to the cache session, which stages, evicts, or does nothing. */
   async conclude(outcome: StepOutcome): Promise<void> {
-    await this.stepCache?.conclude(outcome, this.explanation);
+    const model = this.agent.config.model;
+    await this.stepCache?.conclude(outcome, this.explanation, model === undefined ? undefined : { provider: model.provider, model: model.id });
   }
 
   /**

@@ -198,6 +198,9 @@ attemptContext.appLog({ source: 'navigation', level: 'info', text: 'navigated to
 attemptContext.navigation('navigated to /login');
 declare const actCache: NonNullable<Awaited<ReturnType<Agent['act']>>['cache']>;
 actCache.entry satisfies string | undefined;
+actCache.recordedBy satisfies { readonly provider: string; readonly model: string } | undefined;
+// @ts-expect-error a recording model id must be a string.
+({ provider: 'test', model: 1 }) satisfies NonNullable<typeof actCache.recordedBy>;
 // @ts-expect-error what became of the recording is known once the attempt ends, so only the report has it.
 void actCache.write;
 credentials.user('admin').password satisfies Secret;
