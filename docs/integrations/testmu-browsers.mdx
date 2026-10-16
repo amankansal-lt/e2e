@@ -65,12 +65,14 @@ permissions. The dashboard shows one session per worker slot, named
 | Option | Default | Meaning |
 | ------ | ------- | ------- |
 | `browserName` | `'Chrome'` | `'Chrome'` or `'MicrosoftEdge'`. The web engine attaches over CDP, so any other browser fails the config. |
-| `capabilities` | none | TestMu AI's `LT:Options`, such as `browserVersion`, `platform`, `geoLocation`, `timezone`, `video`, `network`, or `tunnel` and `tunnelName` for [TestMu AI Tunnel](https://www.lambdatest.com/support/docs/testing-locally-hosted-pages/). |
+| `capabilities` | none | `browserVersion`, sent next to `browserName`, and TestMu AI's `LT:Options` fields, such as `platform`, `geoLocation`, `timezone`, `video`, `network`, or `tunnel` and `tunnelName` for [TestMu AI Tunnel](https://www.lambdatest.com/support/docs/testing-locally-hosted-pages/). |
 
 The provider sends `build` (the run id), `project` (`e2e`), and
 `idleTimeout` (600 seconds) unless `capabilities` sets them. It sets
 `user`, `accessKey`, and `name` itself, so `capabilities` that set any of
-them fail the config with `INVALID_CONFIG`, as does a misspelled option.
+them fail the config with `INVALID_CONFIG`. So do a nested `LT:Options`, a
+`browserName` (use the option), a value JSON cannot carry, and a misspelled
+option.
 
 ```ts
 testmuBrowsers({

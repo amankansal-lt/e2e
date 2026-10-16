@@ -11,11 +11,12 @@ export interface TestmuBrowsersOptions {
   /** `Chrome` when absent. */
   readonly browserName?: TestmuBrowserName | undefined;
   /**
-   * `LT:Options` capabilities: `browserVersion`, `platform`, `geoLocation`,
-   * `timezone`, `video`, `tunnel`, and the rest TestMu AI takes. `build`
-   * defaults to the run id, `project` to `e2e`, and `idleTimeout` to 600
-   * seconds. `user`, `accessKey`, and `name` are not accepted: the provider
-   * sets them, from `LT_USERNAME`, `LT_ACCESS_KEY`, and the run.
+   * `browserVersion`, sent next to `browserName`, and `LT:Options` fields:
+   * `platform`, `geoLocation`, `timezone`, `video`, `tunnel`, and the rest
+   * TestMu AI takes. `build` defaults to the run id, `project` to `e2e`, and
+   * `idleTimeout` to 600 seconds. `user`, `accessKey`, and `name` are not
+   * accepted: the provider sets them, from `LT_USERNAME`, `LT_ACCESS_KEY`,
+   * and the run.
    */
   readonly capabilities?: Readonly<Record<string, unknown>> | undefined;
 }
@@ -50,9 +51,21 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
   if (!BROWSERS.includes(browserName)) {
     throw new ConfigurationError('INVALID_CONFIG', `testmuBrowsers: \`browserName\` must be one of ${BROWSERS.join(', ')}, got ${JSON.stringify(browserName)}`);
   }
-  const capabilities = options.capabilities === undefined ? {} : options.capabilities;
-  if (typeof capabilities !== 'object' || capabilities === null || Array.isArray(capabilities)) {
+  const capabilities: unknown = options.capabilities === undefined ? {} : options.capabilities;
+  if (!isPlainObject(capabilities)) {
     throw new ConfigurationError('INVALID_CONFIG', 'testmuBrowsers: `capabilities` must be an object of `LT:Options` fields');
+  }
+  for (const [key, value] of Object.entries(capabilities)) {
+    // JSON.stringify turns a Map or a class instance into `{}` and a Date into a string, so TestMu AI would get something else.
+    if (typeof value === 'object' && value !== null && !Array.isArray(value) && !isPlainObject(value)) {
+      throw new ConfigurationError('INVALID_CONFIG', `testmuBrowsers: \`capabilities.${key}\` must be JSON data: a string, number, boolean, array, or plain object`);
+    }
+  }
+  if ('LT:Options' in capabilities) {
+    throw new ConfigurationError('INVALID_CONFIG', 'testmuBrowsers: pass `LT:Options` fields directly in `capabilities`, not nested under `LT:Options`');
+  }
+  if ('browserName' in capabilities) {
+    throw new ConfigurationError('INVALID_CONFIG', 'testmuBrowsers: set `browserName` as an option, not in `capabilities`');
   }
   const reserved = RESERVED_CAPABILITIES.filter((key) => key in capabilities);
   if (reserved.length > 0) {
@@ -61,6 +74,13 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
       `testmuBrowsers: \`capabilities\` cannot set ${reserved.map((key) => `\`${key}\``).join(', ')}; the provider names each session, and reads LT_USERNAME and LT_ACCESS_KEY from the environment`,
     );
   }
+  try {
+    JSON.stringify(capabilities);
+  } catch (error) {
+    throw new ConfigurationError('INVALID_CONFIG', `testmuBrowsers: \`capabilities\` must be JSON data: ${error instanceof Error ? error.message : String(error)}`);
+  }
+  // An undefined value would replace a default and then vanish from the JSON.
+  const { browserVersion, ...ltCapabilities } = Object.fromEntries(Object.entries(capabilities).filter(([, value]) => value !== undefined));
   return {
     name: 'testmu-browsers',
     async acquire(request: BrowserRequest): Promise<BrowserLease> {
@@ -70,7 +90,7 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
         project: DEFAULT_PROJECT,
         build: request.runId,
         idleTimeout: DEFAULT_IDLE_TIMEOUT_SECONDS,
-        ...capabilities,
+        ...ltCapabilities,
         name,
         user: username,
         accessKey,
@@ -78,7 +98,7 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
       request.log(`TestMu AI session "${name}" in build "${String(ltOptions['build'])}"`);
       return {
         id: `${request.targetName}:slot-${request.slot + 1}`,
-        cdpEndpoint: `${CDP_ENDPOINT}?capabilities=${encodeURIComponent(JSON.stringify({ browserName, 'LT:Options': ltOptions }))}`,
+        cdpEndpoint: `${CDP_ENDPOINT}?capabilities=${encodeURIComponent(JSON.stringify({ browserName, ...(browserVersion === undefined ? {} : { browserVersion }), 'LT:Options': ltOptions }))}`,
       };
     },
     async release(): Promise<void> {
@@ -94,4 +114,11 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
  */
 function sessionName({ runId, targetName, slot }: BrowserRequest): string {
   return `e2e-${runId}-${targetName}-${slot + 1}`;
+}
+
+/** A plain object, as JSON writes it back: not null, an array, a Map, a Date, or another class instance. */
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  if (typeof value !== 'object' || value === null) return false;
+  const prototype: unknown = Object.getPrototypeOf(value);
+  return prototype === Object.prototype || prototype === null;
 }

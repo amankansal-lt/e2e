@@ -13,6 +13,7 @@ const ACCESS_KEY = 'LT_secret-access-key';
 
 interface Capabilities {
   browserName: string;
+  browserVersion?: string;
   'LT:Options': Record<string, unknown>;
 }
 
@@ -87,7 +88,7 @@ describe('testmuBrowsers()', () => {
     expect(await nameOf({ runId: '01a0fcab-e8da', targetName: 'checkout-web', slot: 2, slots: 3 })).toBe('e2e-01a0fcab-e8da-checkout-web-3');
   });
 
-  it('sends Edge and further LT:Options capabilities, which override the build and project defaults', async () => {
+  it('sends Edge, browserVersion next to browserName, and the rest as LT:Options, which override the build and project defaults', async () => {
     const lease = await testmuBrowsers({
       browserName: 'MicrosoftEdge',
       capabilities: { browserVersion: '140', platform: 'macOS Sequoia', build: 'nightly', project: 'checkout', video: true, idleTimeout: 300 },
@@ -95,8 +96,8 @@ describe('testmuBrowsers()', () => {
     const { capabilities } = decode(lease.cdpEndpoint);
 
     expect(capabilities.browserName).toBe('MicrosoftEdge');
+    expect(capabilities.browserVersion).toBe('140');
     expect(capabilities['LT:Options']).toEqual({
-      browserVersion: '140',
       platform: 'macOS Sequoia',
       build: 'nightly',
       project: 'checkout',
@@ -106,6 +107,14 @@ describe('testmuBrowsers()', () => {
       user: 'alice',
       accessKey: ACCESS_KEY,
     });
+  });
+
+  it('keeps the build, project, and idleTimeout defaults when capabilities set them to undefined', async () => {
+    const lease = await testmuBrowsers({ capabilities: { build: undefined, project: undefined, idleTimeout: undefined, browserVersion: undefined } }).acquire(request());
+    const { capabilities } = decode(lease.cdpEndpoint);
+
+    expect('browserVersion' in capabilities).toBe(false);
+    expect(capabilities['LT:Options']).toMatchObject({ build: 'run-1', project: 'e2e', idleTimeout: 600 });
   });
 
   it('takes the credentials from the run environment, not process.env', async () => {
@@ -133,10 +142,26 @@ describe('testmuBrowsers()', () => {
     [{ capabilities: null }, '`capabilities` must be an object'],
     [{ capabilities: ['video'] }, '`capabilities` must be an object'],
     [{ capabilities: 'video' }, '`capabilities` must be an object'],
+    [{ capabilities: new Map([['video', true]]) }, '`capabilities` must be an object'],
+    [{ capabilities: { 'LT:Options': { video: true } } }, 'pass `LT:Options` fields directly in `capabilities`'],
+    [{ capabilities: { browserName: 'Firefox' } }, 'set `browserName` as an option'],
+    [{ capabilities: { geoLocation: new Date(0) } }, '`capabilities.geoLocation` must be JSON data'],
+    [{ capabilities: { tunnelName: new Map() } }, '`capabilities.tunnelName` must be JSON data'],
   ])('rejects %j when the provider is created', (options, message) => {
     expect(() => testmuBrowsers(options as unknown as TestmuBrowsersOptions)).toThrow(
       expect.objectContaining({ code: 'INVALID_CONFIG', message: expect.stringContaining(message) }),
     );
+  });
+
+  it('refuses capabilities JSON cannot encode when the provider is created: a BigInt, a cycle', () => {
+    const circular: Record<string, unknown> = {};
+    circular['self'] = circular;
+
+    for (const capabilities of [{ video: 1n }, { network: circular }]) {
+      expect(() => testmuBrowsers({ capabilities })).toThrow(
+        expect.objectContaining({ code: 'INVALID_CONFIG', message: expect.stringContaining('`capabilities` must be JSON') }),
+      );
+    }
   });
 
   it('logs the session and build names but never the access key or the URL', async () => {
