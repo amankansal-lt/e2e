@@ -58,8 +58,8 @@ or log in to your account, then copy your username and access key from
 Each worker gets its own session, so `workers` sets how
 many run at once. Keep it within your TestMu AI plan's parallel sessions:
 a session beyond it waits in TestMu AI's queue, and the web engine gives a
-session 60 seconds to accept the CDP connection, so one that waits longer
-fails its attempt. See [Limits](#limits).
+session at most 60 seconds to accept the CDP connection (a shorter
+`launchTimeout` ends it sooner), so one that waits longer fails its attempt. See [Limits](#limits).
 
 ## Options
 
@@ -102,7 +102,7 @@ test the worker ran.
 TestMu AI session, named after the run, the target, and the attempt. It costs a
 session start per test and carries the limits of a
 [per-attempt lease](/browser#hosted-browsers): no `headers`, `basicAuth`, or
-`userAgent`, no `app.clearState()`, and no [sessions](/authentication). A
+`userAgent`, `locale`, or `timezoneId`, no `app.clearState()`, and no [sessions](/authentication). A
 dropped connection cannot be resumed. The engine reconnects to the same CDP
 URL, which starts a new TestMu AI session under the same name; the engine
 sees a different browser, closes it, and fails the attempt with
@@ -124,7 +124,8 @@ hub's routes:
 ## Limits
 
 - **60-second connect.** The web engine waits 60 seconds for the browser to
-  accept the CDP connection, and `launchTimeout` does not change that. A
+  accept the CDP connection. A shorter `launchTimeout` ends the wait sooner,
+  but a longer one does not extend it. A
   session still in TestMu AI's queue, or one that is slow to provision, fails
   its attempt with `connectOverCDP: Timeout 60000ms exceeded`
   (`LAUNCH_TIMEOUT`). Chrome on Windows typically connects in about 10 to 30
