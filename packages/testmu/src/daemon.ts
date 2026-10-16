@@ -21,10 +21,17 @@ interface Installation {
 function installation(name: string): Installation {
   let directory = path.dirname(fileURLToPath(import.meta.resolve(name)));
   while (true) {
+    const file = path.join(directory, 'package.json');
+    let manifest: unknown;
     try {
-      const manifest = JSON.parse(readFileSync(path.join(directory, 'package.json'), 'utf8')) as { name?: string; version: string; bin?: Record<string, string> };
-      if (manifest.name === name) return { directory, version: manifest.version, ...(manifest.bin === undefined ? {} : { bin: manifest.bin }) };
+      manifest = JSON.parse(readFileSync(file, 'utf8'));
     } catch { /* The entry may be several directories below its package. */ }
+    if (isRecord(manifest) && manifest['name'] === name) {
+      const version = manifest['version'];
+      if (typeof version !== 'string') throw new Error(`Cannot find the installed ${name} package: ${file} declares no version`);
+      const bin = isRecord(manifest['bin']) ? Object.fromEntries(Object.entries(manifest['bin']).filter((entry): entry is [string, string] => typeof entry[1] === 'string')) : undefined;
+      return { directory, version, ...(bin === undefined ? {} : { bin }) };
+    }
     const parent = path.dirname(directory);
     if (parent === directory) throw new Error(`Cannot find the installed ${name} package`);
     directory = parent;
@@ -73,6 +80,14 @@ export async function startDriver(request: DriverRequest, env: NodeJS.ProcessEnv
 export async function stopDriver(stateDir: string, env: NodeJS.ProcessEnv, signal: AbortSignal): Promise<void> {
   const cli = installation('agent-device');
   const { stdout } = await exec(process.execPath, [path.join(cli.directory, cli.bin!['agent-device']!), 'daemon', 'stop', '--state-dir', stateDir, '--clean', '--json'], { env, signal });
-  const pending = (JSON.parse(stdout) as { data?: { providerReleases?: { pending?: unknown[] } } }).data?.providerReleases?.pending ?? [];
+  const output: unknown = JSON.parse(stdout);
+  const data = isRecord(output) ? output['data'] : undefined;
+  const releases = isRecord(data) ? data['providerReleases'] : undefined;
+  const pending = isRecord(releases) && Array.isArray(releases['pending']) ? releases['pending'] : [];
   if (pending.length > 0) throw new Error(`agent-device stopped without ending ${pending.length} TestMu AI session(s)`);
+}
+
+/** A plain JSON object, not an array or `null`. */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
