@@ -1,6 +1,6 @@
 import type { E2EConfig } from 'e2e';
 import { web } from '@e2e-dev/web';
-import { testmuBrowsers } from '@e2e-dev/testmu/web';
+import { testmuBrowsers } from '@e2e-dev/testmu-browsers';
 
 export default {
   targets: [
