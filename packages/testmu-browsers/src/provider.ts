@@ -13,8 +13,8 @@ export interface TestmuBrowsersOptions {
   /**
    * `browserVersion`, sent next to `browserName`, and `LT:Options` fields:
    * `platform`, `geoLocation`, `timezone`, `video`, `tunnel`, and the rest
-   * TestMu AI takes. `build` defaults to the run id, `project` to `e2e`, and
-   * `idleTimeout` to 600 seconds. `user`, `accessKey`, and `name` are not
+   * TestMu AI takes. `platform` defaults to `Windows 11`, `build` to the run
+   * id, `project` to `e2e`, and `idleTimeout` to 600 seconds. `user`, `accessKey`, and `name` are not
    * accepted: the provider sets them, from `LT_USERNAME`, `LT_ACCESS_KEY`,
    * and the run.
    */
@@ -33,6 +33,8 @@ const CDP_ENDPOINT = 'wss://cdp.lambdatest.com/puppeteer';
 
 /** The dashboard project sessions are grouped under when `capabilities` sets none, as `testmu()`'s default. */
 const DEFAULT_PROJECT = 'e2e';
+// The hub refuses a session without a platform.
+const DEFAULT_PLATFORM = 'Windows 11';
 // The hub ends a CDP session after 300 s without client traffic, shorter than a slow test's gaps.
 const DEFAULT_IDLE_TIMEOUT_SECONDS = 600;
 
@@ -87,6 +89,7 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
       const { username, accessKey } = testmuCredentials(request.env);
       const name = sessionName(request);
       const ltOptions: Record<string, unknown> = {
+        platform: DEFAULT_PLATFORM,
         project: DEFAULT_PROJECT,
         build: request.runId,
         idleTimeout: DEFAULT_IDLE_TIMEOUT_SECONDS,

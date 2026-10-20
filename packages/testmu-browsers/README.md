@@ -28,8 +28,8 @@ Set `LT_USERNAME` and `LT_ACCESS_KEY` in the run environment, from
 ([accounts.lambdatest.com/security/username-accesskey](https://accounts.lambdatest.com/security/username-accesskey)).
 `browserName` is `Chrome` (default) or `MicrosoftEdge`. `capabilities` takes
 `browserVersion`, sent next to `browserName`, and `LT:Options` fields such as
-`platform`, `geoLocation`, and `video`; `build` defaults to the run id and
-`project` to `e2e`.
+`platform`, `geoLocation`, and `video`; `platform` defaults to `Windows 11`,
+`build` to the run id, and `project` to `e2e`.
 
 Full documentation lives at [e2e.tester.army/docs/integrations/testmu-browsers](https://e2e.tester.army/docs/integrations/testmu-browsers).
 

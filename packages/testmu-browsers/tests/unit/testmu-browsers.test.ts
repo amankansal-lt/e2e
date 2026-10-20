@@ -58,6 +58,7 @@ describe('testmuBrowsers()', () => {
     expect(capabilities).toEqual({
       browserName: 'Chrome',
       'LT:Options': {
+        platform: 'Windows 11',
         project: 'e2e',
         build: 'run-1',
         idleTimeout: 600,
@@ -109,12 +110,12 @@ describe('testmuBrowsers()', () => {
     });
   });
 
-  it('keeps the build, project, and idleTimeout defaults when capabilities set them to undefined', async () => {
-    const lease = await testmuBrowsers({ capabilities: { build: undefined, project: undefined, idleTimeout: undefined, browserVersion: undefined } }).acquire(request());
+  it('keeps the platform, build, project, and idleTimeout defaults when capabilities set them to undefined', async () => {
+    const lease = await testmuBrowsers({ capabilities: { platform: undefined, build: undefined, project: undefined, idleTimeout: undefined, browserVersion: undefined } }).acquire(request());
     const { capabilities } = decode(lease.cdpEndpoint);
 
     expect('browserVersion' in capabilities).toBe(false);
-    expect(capabilities['LT:Options']).toMatchObject({ build: 'run-1', project: 'e2e', idleTimeout: 600 });
+    expect(capabilities['LT:Options']).toMatchObject({ platform: 'Windows 11', build: 'run-1', project: 'e2e', idleTimeout: 600 });
   });
 
   it('takes the credentials from the run environment, not process.env', async () => {
