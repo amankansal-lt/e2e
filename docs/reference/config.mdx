@@ -654,9 +654,7 @@ artifacts: {
 | [`store.putLink`](#putlink) | `Promise<{ ref }>` |
 
 - [`trace` and `video`](#recording) choose the recordings. The runner
-  captures a failure's screenshot and screen text whenever the engine can
-  (never after a secret fill, see
-  [Security rules](/reference/security#screenshots-after-a-secret-fill)).
+  captures a failure's screenshot and screen text whenever the engine can.
 - Each worker constructs its own store from the config module.
 - A failed `put` or `putLink` never fails the run.
 
@@ -1358,7 +1356,9 @@ process.loadEnvFile('.env');
 ```
 
 It throws when the file is missing; guard it with `existsSync` from
-`node:fs` when only some machines have one.
+`node:fs` when only some machines have one. The path resolves against the
+directory e2e runs from, but workers start in the config's directory. To run
+from a subdirectory, pass `new URL('.env', import.meta.url)` instead.
 
 ### Module format
 

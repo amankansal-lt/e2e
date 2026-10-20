@@ -34,8 +34,8 @@ For anything the references do not cover, the full documentation ships in
 the `docs/` directory of the installed `e2e` package
 (`node_modules/e2e/docs` in a single-package project); a link such as
 `/reference/cli` is `docs/reference/cli.mdx`. Complete projects for Vite,
-Next.js, Astro, Expo, SwiftUI, Jetpack Compose, Kotlin Multiplatform, and
-Flutter are in https://github.com/tester-army/e2e/tree/main/examples.
+Next.js, Astro, Expo, SwiftUI, Jetpack Compose, Kotlin Multiplatform,
+Flutter, and .NET MAUI are in https://github.com/tester-army/e2e/tree/main/examples.
 
 ## Quick start
 
@@ -158,8 +158,8 @@ you worked around it or gave up. Never report:
 
 - failures of the app under test, or its own behavior;
 - a problem you saw once and could not see again;
-- anything on an outdated e2e: the command refuses it, so upgrade and check
-  the problem still happens first.
+- anything on an outdated e2e: the command refuses it, so upgrade
+  (`npx e2e@latest upgrade`) and check the problem still happens first.
 
 Search [existing issues](https://github.com/tester-army/e2e/issues) first
 (`gh issue list -R tester-army/e2e --search "<words>"`); comment on a match

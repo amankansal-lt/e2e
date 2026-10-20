@@ -9,7 +9,7 @@ icon: "plug"
 `e2e mcp` lets coding agents such as Claude Code and Cursor inspect your app,
 try locators, and take masked screenshots before writing tests. It runs over
 stdio and uses the project's configured engine. For setup and what to ask
-the agent, see the [MCP server guide](/mcp).
+the agent, see the [MCP server guide](/mcp-server).
 
 ```json title=".mcp.json"
 {
@@ -90,8 +90,10 @@ e2e mcp --max-sessions 8 # default: 4
 #### `open_session`
 
 Loads the config, starts the target's app command, boots the engine, starts
-one attempt, and opens the app URL when the engine can navigate. Returns the
-session id, the catalog, and the first observation.
+one attempt, and opens the app: its URL when the engine can navigate, or on a
+device the [pinned app](/mobile#point-at-your-app), launched fresh. It installs
+no build, so a local device target needs `app.bundleId`. Returns the session
+id, the catalog, and the first observation.
 
 ```txt
 open_session {target: "web", headed: true}

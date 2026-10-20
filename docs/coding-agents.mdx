@@ -31,7 +31,8 @@ bunx e2e init
 | `.agents/skills/e2e/` | Agents that read `.agents/skills` |
 | `.claude/skills/e2e/` | Claude Code. A symlink to `.agents/skills/e2e/` when both are installed. |
 
-The copy holds `SKILL.md` and topic references. After you upgrade e2e, run
+The copy holds `SKILL.md` and topic references. After you upgrade e2e, with
+[`e2e upgrade`](/reference/cli#e2e-upgrade) or your package manager, run
 `init` again to update it. Without `init`, `npx skills add tester-army/e2e`
 installs the skill, and `npx e2e guide [topic]` prints it from the
 installed package. The Claude Code and Codex plugin below installs all
@@ -89,7 +90,7 @@ codex plugin marketplace upgrade e2e
 
 `e2e mcp` gives the agent a live session on your app. It checks each
 locator against the screen before it writes the test, and checks its own UI
-changes. `init` registers the server. See [MCP server](/mcp) for setup and
+changes. `init` registers the server. See [MCP server](/mcp-server) for setup and
 prompts.
 
 ## How an agent writes and runs a test

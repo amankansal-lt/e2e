@@ -151,7 +151,7 @@ export interface AgentOption {
 export interface AssertOptions extends VisionOption, AgentOption {
   /** Deadline in milliseconds; defaults to the agent's `judgmentTimeout`, 30000. */
   timeout?: number;
-  /** Attach a redacted screenshot to the step; on by default, denied after a secret fill. */
+  /** Attach a redacted screenshot to the step; on by default. */
   screenshot?: boolean;
 }
 
@@ -192,6 +192,27 @@ export interface ActOptions extends AgentOption {
   maxSteps?: number;
   /** Model-call budget; defaults to `agents.<name>.maxModelCalls` and can only lower it. */
   maxModelCalls?: number;
+  /**
+   * Runs after each action the step completes, once the screen settles, and
+   * before the next one. Awaited, and its time counts toward `timeout`.
+   * Observe only: drive nothing from it. A throw fails the step.
+   */
+  onAction?: ActionHook;
+}
+
+/** The `onAction` hook of an `act` call. */
+export type ActionHook = (event: ActionEvent) => void | Promise<void>;
+
+/** One completed action of an `act` step, as `onAction` receives it. */
+export interface ActionEvent {
+  /** 1-based position in the step's action budget; a failed attempt uses a number too. */
+  readonly index: number;
+  /** The committed action, e.g. `tap` or `navigate`; a mutating project tool reads `tool:<name>`. */
+  readonly action: string;
+  /** What the action did, secrets redacted. */
+  readonly summary: string;
+  /** `model` when the executor chose the action, `replay` when the cache replayed it. */
+  readonly source: 'model' | 'replay';
 }
 
 /** What one passing `act` step did, as the report records it. */
@@ -452,9 +473,17 @@ export interface Screen {
     target: Locator,
     options?: { direction?: ScrollDirection; momentum?: Momentum; timeout?: number },
   ): Promise<void>;
+  /**
+   * Reads the whole screen once, without waiting, as the agent reads it: one
+   * node per line, `#id role "name" text="…" [states]`, children indented,
+   * secrets redacted.
+   */
+  tree(options?: ActionOptions): Promise<string>;
+  /** Prints `tree()` to the test's output. */
+  debug(options?: ActionOptions): Promise<void>;
 }
 
-export interface Locator extends Screen {
+export interface Locator extends Omit<Screen, 'tree' | 'debug'> {
   /** Taps exactly one matching actionable node; with `position`, taps that point of its box once it is in view, with no other actionability check. */
   tap(options?: TapOptions): Promise<void>;
   /** Alias of tap. */
