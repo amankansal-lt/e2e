@@ -35,6 +35,8 @@ const CDP_ENDPOINT = 'wss://cdp.lambdatest.com/puppeteer';
 const DEFAULT_PROJECT = 'e2e';
 // The hub refuses a session without a platform.
 const DEFAULT_PLATFORM = 'Windows 11';
+// The hub's Edge CDP connect never completes without a user data directory.
+const EDGE_USER_DATA_DIR = '--user-data-dir=remote-debug-profile-edge';
 // The hub ends a CDP session after 300 s without client traffic, shorter than a slow test's gaps.
 const DEFAULT_IDLE_TIMEOUT_SECONDS = 600;
 
@@ -76,6 +78,10 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
       `testmuBrowsers: \`capabilities\` cannot set ${reserved.map((key) => `\`${key}\``).join(', ')}; the provider names each session, and reads LT_USERNAME and LT_ACCESS_KEY from the environment`,
     );
   }
+  const browserOptions: unknown = capabilities['browserOptions'];
+  if (browserOptions !== undefined && !(Array.isArray(browserOptions) && browserOptions.every((flag) => typeof flag === 'string'))) {
+    throw new ConfigurationError('INVALID_CONFIG', 'testmuBrowsers: `capabilities.browserOptions` must be an array of strings');
+  }
   try {
     JSON.stringify(capabilities);
   } catch (error) {
@@ -83,6 +89,10 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
   }
   // An undefined value would replace a default and then vanish from the JSON.
   const { browserVersion, ...ltCapabilities } = Object.fromEntries(Object.entries(capabilities).filter(([, value]) => value !== undefined));
+  const flags: readonly string[] = browserOptions ?? [];
+  if (browserName === 'MicrosoftEdge' && !flags.some((flag) => flag.startsWith('--user-data-dir='))) {
+    ltCapabilities['browserOptions'] = [...flags, EDGE_USER_DATA_DIR];
+  }
   return {
     name: 'testmu-browsers',
     async acquire(request: BrowserRequest): Promise<BrowserLease> {

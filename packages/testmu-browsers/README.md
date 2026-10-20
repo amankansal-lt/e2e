@@ -29,7 +29,9 @@ Set `LT_USERNAME` and `LT_ACCESS_KEY` in the run environment, from
 `browserName` is `Chrome` (default) or `MicrosoftEdge`. `capabilities` takes
 `browserVersion`, sent next to `browserName`, and `LT:Options` fields such as
 `platform`, `geoLocation`, and `video`; `platform` defaults to `Windows 11`,
-`build` to the run id, and `project` to `e2e`.
+`build` to the run id, and `project` to `e2e`. Edge sessions get
+`--user-data-dir=remote-debug-profile-edge` in `browserOptions` unless
+`capabilities` set one.
 
 Full documentation lives at [e2e.tester.army/docs/integrations/testmu-browsers](https://e2e.tester.army/docs/integrations/testmu-browsers).
 

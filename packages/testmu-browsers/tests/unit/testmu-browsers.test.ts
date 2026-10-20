@@ -104,10 +104,37 @@ describe('testmuBrowsers()', () => {
       project: 'checkout',
       video: true,
       idleTimeout: 300,
+      browserOptions: ['--user-data-dir=remote-debug-profile-edge'],
       name: 'e2e-run-1-chromium-1',
       user: 'alice',
       accessKey: ACCESS_KEY,
     });
+  });
+
+  it('adds --user-data-dir=remote-debug-profile-edge to an Edge session\'s browserOptions', async () => {
+    const lease = await testmuBrowsers({ browserName: 'MicrosoftEdge' }).acquire(request());
+
+    expect(decode(lease.cdpEndpoint).capabilities['LT:Options']['browserOptions']).toEqual(['--user-data-dir=remote-debug-profile-edge']);
+  });
+
+  it('appends the Edge user-data-dir flag to the browserOptions capabilities give', async () => {
+    const lease = await testmuBrowsers({ browserName: 'MicrosoftEdge', capabilities: { browserOptions: ['--no-sandbox'] } }).acquire(request());
+
+    expect(decode(lease.cdpEndpoint).capabilities['LT:Options']['browserOptions']).toEqual(['--no-sandbox', '--user-data-dir=remote-debug-profile-edge']);
+  });
+
+  it('keeps a --user-data-dir that capabilities set for Edge', async () => {
+    const lease = await testmuBrowsers({ browserName: 'MicrosoftEdge', capabilities: { browserOptions: ['--user-data-dir=mine'] } }).acquire(request());
+
+    expect(decode(lease.cdpEndpoint).capabilities['LT:Options']['browserOptions']).toEqual(['--user-data-dir=mine']);
+  });
+
+  it('passes Chrome browserOptions through and adds none', async () => {
+    const plain = decode((await testmuBrowsers().acquire(request())).cdpEndpoint).capabilities['LT:Options'];
+    const given = decode((await testmuBrowsers({ capabilities: { browserOptions: ['--no-sandbox'] } }).acquire(request())).cdpEndpoint).capabilities['LT:Options'];
+
+    expect('browserOptions' in plain).toBe(false);
+    expect(given['browserOptions']).toEqual(['--no-sandbox']);
   });
 
   it('keeps the platform, build, project, and idleTimeout defaults when capabilities set them to undefined', async () => {
@@ -146,6 +173,8 @@ describe('testmuBrowsers()', () => {
     [{ capabilities: new Map([['video', true]]) }, '`capabilities` must be an object'],
     [{ capabilities: { 'LT:Options': { video: true } } }, 'pass `LT:Options` fields directly in `capabilities`'],
     [{ capabilities: { browserName: 'Firefox' } }, 'set `browserName` as an option'],
+    [{ capabilities: { browserOptions: '--no-sandbox' } }, '`capabilities.browserOptions` must be an array of strings'],
+    [{ capabilities: { browserOptions: [1] } }, '`capabilities.browserOptions` must be an array of strings'],
     [{ capabilities: { geoLocation: new Date(0) } }, '`capabilities.geoLocation` must be JSON data'],
     [{ capabilities: { tunnelName: new Map() } }, '`capabilities.tunnelName` must be JSON data'],
   ])('rejects %j when the provider is created', (options, message) => {

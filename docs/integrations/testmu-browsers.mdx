@@ -70,11 +70,12 @@ permissions. The dashboard shows one session per worker slot, named
 
 The provider sends `platform` (`Windows 11`, since TestMu AI refuses a
 session without one), `build` (the run id), `project` (`e2e`), and
-`idleTimeout` (600 seconds) unless `capabilities` sets them. It sets
-`user`, `accessKey`, and `name` itself, so `capabilities` that set any of
-them fail the config with `INVALID_CONFIG`. So do a nested `LT:Options`, a
-`browserName` (use the option), a value JSON cannot carry, and a misspelled
-option.
+`idleTimeout` (600 seconds) unless `capabilities` sets them. Edge sessions get
+`--user-data-dir=remote-debug-profile-edge` in `browserOptions` unless
+`capabilities` set one. It sets `user`, `accessKey`, and `name` itself, so
+`capabilities` that set any of them fail the config with `INVALID_CONFIG`.
+So do a nested `LT:Options`, a `browserName` (use the option), a value JSON
+cannot carry, and a misspelled option.
 
 ```ts
 testmuBrowsers({
