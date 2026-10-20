@@ -7,7 +7,7 @@
 
 import type { BrowserReleaseContext, BrowserRequest } from '@e2e-dev/web';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { testmuBrowsers, type TestmuBrowsersOptions } from '../../src/index.ts';
+import { testmuBrowsers, type TestmuBrowsersOptions } from '../../src/web.ts';
 
 const ACCESS_KEY = 'LT_secret-access-key';
 
@@ -80,7 +80,6 @@ describe('testmuBrowsers()', () => {
     expect('scope' in testmuBrowsers()).toBe(false);
   });
 
-  // The same format as slotSessionName in packages/testmu/src/provider.ts, so a run's device and browser sessions read alike.
   it('names every session e2e-<run id>-<target>-<slot>, as testmu() does', async () => {
     const nameOf = async (overrides: Partial<BrowserRequest>) =>
       decode((await testmuBrowsers().acquire(request(overrides))).cdpEndpoint).capabilities['LT:Options']['name'];
@@ -175,8 +174,11 @@ describe('testmuBrowsers()', () => {
     [{ capabilities: { browserName: 'Firefox' } }, 'set `browserName` as an option'],
     [{ capabilities: { browserOptions: '--no-sandbox' } }, '`capabilities.browserOptions` must be an array of strings'],
     [{ capabilities: { browserOptions: [1] } }, '`capabilities.browserOptions` must be an array of strings'],
-    [{ capabilities: { geoLocation: new Date(0) } }, '`capabilities.geoLocation` must be JSON data'],
-    [{ capabilities: { tunnelName: new Map() } }, '`capabilities.tunnelName` must be JSON data'],
+    [{ capabilities: { geoLocation: new Date(0) } }, '`capabilities.geoLocation` must be JSON-safe'],
+    [{ capabilities: { tunnelName: new Map() } }, '`capabilities.tunnelName` must be JSON-safe'],
+    [{ capabilities: { network: { rules: new Map() } } }, '`capabilities.network` must be JSON-safe'],
+    [{ capabilities: { tunnel: () => true } }, '`capabilities.tunnel` must be JSON-safe, found function'],
+    [{ capabilities: { idleTimeout: Number.NaN } }, '`capabilities.idleTimeout` contains a non-finite number'],
   ])('rejects %j when the provider is created', (options, message) => {
     expect(() => testmuBrowsers(options as unknown as TestmuBrowsersOptions)).toThrow(
       expect.objectContaining({ code: 'INVALID_CONFIG', message: expect.stringContaining(message) }),
@@ -187,11 +189,12 @@ describe('testmuBrowsers()', () => {
     const circular: Record<string, unknown> = {};
     circular['self'] = circular;
 
-    for (const capabilities of [{ video: 1n }, { network: circular }]) {
-      expect(() => testmuBrowsers({ capabilities })).toThrow(
-        expect.objectContaining({ code: 'INVALID_CONFIG', message: expect.stringContaining('`capabilities` must be JSON') }),
-      );
-    }
+    expect(() => testmuBrowsers({ capabilities: { video: 1n } })).toThrow(
+      expect.objectContaining({ code: 'INVALID_CONFIG', message: expect.stringContaining('`capabilities.video` must be JSON-safe, found bigint') }),
+    );
+    expect(() => testmuBrowsers({ capabilities: { network: circular } })).toThrow(
+      expect.objectContaining({ code: 'INVALID_CONFIG', message: expect.stringContaining('`capabilities.network` contains a cycle') }),
+    );
   });
 
   it('logs the session and build names but never the access key or the URL', async () => {

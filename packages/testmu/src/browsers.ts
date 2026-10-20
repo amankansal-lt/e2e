@@ -1,8 +1,9 @@
 /** TestMu AI's hosted Chrome and Edge as a `BrowserProvider` for the web engine. */
 
 import type { BrowserLease, BrowserProvider, BrowserRequest } from '@e2e-dev/web';
-import { ConfigurationError, rejectUnknownKeys } from 'e2e/engine';
+import { ConfigurationError, obj, rejectUnknownKeys, validateJsonValue } from 'e2e/engine';
 import { testmuCredentials } from './credentials.ts';
+import { DEFAULT_PROJECT, defaultSessionName } from './dashboard.ts';
 
 /** The browsers the web engine can attach to over CDP: Chromium ones. */
 export type TestmuBrowserName = 'Chrome' | 'MicrosoftEdge';
@@ -31,8 +32,6 @@ const RESERVED_CAPABILITIES = ['user', 'accessKey', 'name'];
 
 const CDP_ENDPOINT = 'wss://cdp.lambdatest.com/puppeteer';
 
-/** The dashboard project sessions are grouped under when `capabilities` sets none, as `testmu()`'s default. */
-const DEFAULT_PROJECT = 'e2e';
 // The hub refuses a session without a platform.
 const DEFAULT_PLATFORM = 'Windows 11';
 // The hub's Edge CDP connect never completes without a user data directory.
@@ -59,10 +58,15 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
   if (!isPlainObject(capabilities)) {
     throw new ConfigurationError('INVALID_CONFIG', 'testmuBrowsers: `capabilities` must be an object of `LT:Options` fields');
   }
-  for (const [key, value] of Object.entries(capabilities)) {
-    // JSON.stringify turns a Map or a class instance into `{}` and a Date into a string, so TestMu AI would get something else.
-    if (typeof value === 'object' && value !== null && !Array.isArray(value) && !isPlainObject(value)) {
-      throw new ConfigurationError('INVALID_CONFIG', `testmuBrowsers: \`capabilities.${key}\` must be JSON data: a string, number, boolean, array, or plain object`);
+  // An undefined value would replace a default and then vanish from the JSON.
+  const defined = obj(capabilities);
+  for (const [key, value] of Object.entries(defined)) {
+    try {
+      validateJsonValue(value, `testmuBrowsers: \`capabilities.${key}\``);
+    } catch (error) {
+      // JSON.stringify turns a Map or a class instance into `{}`, a Date into a string, and NaN into null, so TestMu AI would get something else.
+      if (error instanceof ConfigurationError) throw error;
+      throw new ConfigurationError('INVALID_CONFIG', error instanceof Error ? error.message : String(error));
     }
   }
   if ('LT:Options' in capabilities) {
@@ -82,13 +86,7 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
   if (browserOptions !== undefined && !(Array.isArray(browserOptions) && browserOptions.every((flag) => typeof flag === 'string'))) {
     throw new ConfigurationError('INVALID_CONFIG', 'testmuBrowsers: `capabilities.browserOptions` must be an array of strings');
   }
-  try {
-    JSON.stringify(capabilities);
-  } catch (error) {
-    throw new ConfigurationError('INVALID_CONFIG', `testmuBrowsers: \`capabilities\` must be JSON data: ${error instanceof Error ? error.message : String(error)}`);
-  }
-  // An undefined value would replace a default and then vanish from the JSON.
-  const { browserVersion, ...ltCapabilities } = Object.fromEntries(Object.entries(capabilities).filter(([, value]) => value !== undefined));
+  const { browserVersion, ...ltCapabilities } = defined;
   const flags: readonly string[] = browserOptions ?? [];
   if (browserName === 'MicrosoftEdge' && !flags.some((flag) => flag.startsWith('--user-data-dir='))) {
     ltCapabilities['browserOptions'] = [...flags, EDGE_USER_DATA_DIR];
@@ -97,7 +95,7 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
     name: 'testmu-browsers',
     async acquire(request: BrowserRequest): Promise<BrowserLease> {
       const { username, accessKey } = testmuCredentials(request.env);
-      const name = sessionName(request);
+      const name = defaultSessionName(request);
       const ltOptions: Record<string, unknown> = {
         platform: DEFAULT_PLATFORM,
         project: DEFAULT_PROJECT,
@@ -120,16 +118,7 @@ export function testmuBrowsers(options: TestmuBrowsersOptions = {}): BrowserProv
   };
 }
 
-/**
- * The format of `testmu()`'s session names, so a run's device and browser
- * sessions read alike on the dashboard. A copy rather than an import: sharing
- * it would make every web install pull in agent-device.
- */
-function sessionName({ runId, targetName, slot }: BrowserRequest): string {
-  return `e2e-${runId}-${targetName}-${slot + 1}`;
-}
-
-/** A plain object, as JSON writes it back: not null, an array, a Map, a Date, or another class instance. */
+/** A plain object: not null, an array, a Map, a Date, or another class instance. */
 function isPlainObject(value: unknown): value is Record<string, unknown> {
   if (typeof value !== 'object' || value === null) return false;
   const prototype: unknown = Object.getPrototypeOf(value);

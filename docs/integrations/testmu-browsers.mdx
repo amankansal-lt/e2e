@@ -1,13 +1,13 @@
 ---
 title: TestMu AI browsers
 sidebarTitle: TestMu AI browsers
-description: Run web targets in TestMu AI's hosted Chrome and Edge with the testmuBrowsers() browser provider from @e2e-dev/testmu-browsers.
+description: Run web targets in TestMu AI's hosted Chrome and Edge with the testmuBrowsers() browser provider from @e2e-dev/testmu/web.
 icon: "/images/icons/testmu.svg"
-"og:image": "https://e2e.tester.army/docs/images/og/integrations/testmu-browsers.png?v=3ffdd48bea"
-"twitter:image": "https://e2e.tester.army/docs/images/og/integrations/testmu-browsers.png?v=3ffdd48bea"
+"og:image": "https://e2e.tester.army/docs/images/og/integrations/testmu-browsers.png?v=555449daeb"
+"twitter:image": "https://e2e.tester.army/docs/images/og/integrations/testmu-browsers.png?v=555449daeb"
 ---
 
-`testmuBrowsers()` from `@e2e-dev/testmu-browsers` is a
+`testmuBrowsers()` from `@e2e-dev/testmu/web` is a
 [browser provider](/browser#hosted-browsers) for
 [TestMu AI](https://www.lambdatest.com) (formerly LambdaTest). Each worker
 slot gets its own hosted Chrome or Edge session for the run. Tests stay the
@@ -15,19 +15,19 @@ same. Only the target's `browser` changes.
 
 ## Setup
 
-Install the provider:
+Install the integration alongside the web engine:
 
 <CodeGroup>
 ```bash npm
-npm install --save-dev @e2e-dev/testmu-browsers
+npm install --save-dev e2e @e2e-dev/web @e2e-dev/testmu
 ```
 
 ```bash pnpm
-pnpm add -D @e2e-dev/testmu-browsers
+pnpm add -D e2e @e2e-dev/web @e2e-dev/testmu
 ```
 
 ```bash bun
-bun add -d @e2e-dev/testmu-browsers
+bun add -d e2e @e2e-dev/web @e2e-dev/testmu
 ```
 </CodeGroup>
 
@@ -36,7 +36,7 @@ Set the target's `browser` to `testmuBrowsers()`:
 ```ts title="e2e.config.ts"
 import type { E2EConfig } from 'e2e';
 import { web } from '@e2e-dev/web';
-import { testmuBrowsers } from '@e2e-dev/testmu-browsers';
+import { testmuBrowsers } from '@e2e-dev/testmu/web';
 
 export default {
   targets: [

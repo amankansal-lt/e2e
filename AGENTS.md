@@ -91,7 +91,10 @@ suites that consume the built packages the way a user would.
   vendor SDK and the engine it plugs into as peers. It implements that
   engine's provider seam (`BrowserProvider` for web, `DeviceProvider` for
   mobile) and imports the engine's types only; the engines never know it
-  exists.
+  exists. A service with providers for both engines ships them in that one
+  package, each engine an optional peer and each provider on its own entry
+  that never imports the other engine (`@e2e-dev/testmu` and
+  `@e2e-dev/testmu/web`).
   Its docs page under `docs/integrations/` ships with the vendor's logo as
   the sidebar icon and on its overview card (`authoring-docs`, "Page
   icons"); `scripts/check-docs-logos.ts` fails `pnpm docs:check` without
@@ -134,10 +137,8 @@ suites that consume the built packages the way a user would.
 - `packages/testmu` — the published `@e2e-dev/testmu` package: TestMu AI
   (formerly LambdaTest) hosted Android emulators, iOS simulators, and real
   devices for the mobile engine (`DeviceProvider`), through agent-device's
-  `@agent-device/testmu` plugin.
-- `packages/testmu-browsers` - the published `@e2e-dev/testmu-browsers`
-  package: TestMu AI hosted Chrome and Edge for the web engine
-  (`BrowserProvider`), one session per worker slot.
+  `@agent-device/testmu` plugin, and hosted Chrome and Edge for the web
+  engine (`BrowserProvider`) from `@e2e-dev/testmu/web`.
 - `apps/testbed` (`@e2e-dev/testbed`, private) — dogfood project that
   consumes the **built** packages like a real user would: the playground app
   where every runner feature (sessions, routes, downloads, frames, uploads,
